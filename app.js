@@ -33,7 +33,32 @@ app.use("/api/sales", salesRoutes);
 
 // Health check route for Vercel
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ message: "Server is running!" });
+  res.status(200).json({ 
+    message: "Server is running!",
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Root route
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    message: "Coffee Shop POS API",
+    status: "OK"
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(500).json({ 
+    error: 'Something went wrong!',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 export default app;
