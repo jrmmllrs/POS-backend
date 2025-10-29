@@ -26,12 +26,21 @@ app.use(express.json());
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Database connection middleware
-app.use(async (req, res, next) => {
+// Test database connection on startup (but don't block the app)
+testConnection().then(success => {
+  if (success) {
+    console.log("🎉 Database connection verified on startup");
+  } else {
+    console.log("⚠️  Database connection failed, but server will continue running");
+  }
+});
+
+// Database availability middleware
+app.use((req, res, next) => {
   if (!db) {
     return res.status(503).json({ 
-      error: "Database connection unavailable",
-      message: "Please try again later"
+      error: "Service temporarily unavailable",
+      message: "Database connection is not available"
     });
   }
   next();
@@ -42,19 +51,37 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/sales", salesRoutes);
 
-// Enhanced health check
+// Enhanced health check with database status
 app.get("/api/health", async (req, res) => {
   try {
-    const dbStatus = db ? "connected" : "disconnected";
+    let dbStatus = "unknown";
+    let dbDetails = null;
+    
+    if (db) {
+      try {
+        const [rows] = await db.execute('SELECT 1 as test');
+        dbStatus = "connected";
+        dbDetails = { test: rows[0].test };
+      } catch (dbError) {
+        dbStatus = "error";
+        dbDetails = dbError.message;
+      }
+    } else {
+      dbStatus = "disconnected";
+    }
     
     res.status(200).json({ 
       message: "Server is running!",
-      database: dbStatus,
-      timestamp: new Date().toISOString()
+      database: {
+        status: dbStatus,
+        details: dbDetails
+      },
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV
     });
   } catch (error) {
     res.status(200).json({ 
-      message: "Server is running but database check failed",
+      message: "Server is running but health check failed",
       database: "error",
       timestamp: new Date().toISOString()
     });
@@ -66,7 +93,7 @@ app.get("/", (req, res) => {
   res.status(200).json({ 
     message: "Coffee Shop POS API",
     status: "OK",
-    environment: process.env.NODE_ENV
+    database: db ? "available" : "unavailable"
   });
 });
 

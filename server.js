@@ -1,31 +1,19 @@
-import express from "express";
+import app from "./app.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
+// Check if we're in Vercel production environment
+const isVercel = process.env.VERCEL === '1';
 
-app.use(express.json());
-
-// Simple health check without database
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ 
-    message: "Server is running without DB!",
-    timestamp: new Date().toISOString()
+if (!isVercel) {
+  // Local development - start the server
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running locally on port ${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV}`);
   });
-});
+}
 
-app.get("/", (req, res) => {
-  res.status(200).json({ 
-    message: "Coffee Shop POS API - Basic Version",
-    status: "OK"
-  });
-});
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
+// Export for Vercel (production)
 export default app;
