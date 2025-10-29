@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { db } from "./config/db.js";
+import { db, testConnection } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import salesRoutes from "./routes/salesRoutes.js";
@@ -26,24 +26,47 @@ app.use(express.json());
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Database connection middleware
+app.use(async (req, res, next) => {
+  if (!db) {
+    return res.status(503).json({ 
+      error: "Database connection unavailable",
+      message: "Please try again later"
+    });
+  }
+  next();
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/sales", salesRoutes);
 
-// Health check route for Vercel
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ 
-    message: "Server is running!",
-    timestamp: new Date().toISOString()
-  });
+// Enhanced health check
+app.get("/api/health", async (req, res) => {
+  try {
+    const dbStatus = db ? "connected" : "disconnected";
+    
+    res.status(200).json({ 
+      message: "Server is running!",
+      database: dbStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(200).json({ 
+      message: "Server is running but database check failed",
+      database: "error",
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Root route
 app.get("/", (req, res) => {
   res.status(200).json({ 
     message: "Coffee Shop POS API",
-    status: "OK"
+    status: "OK",
+    environment: process.env.NODE_ENV
   });
 });
 

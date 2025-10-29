@@ -1,26 +1,31 @@
-import app from "./app.js";
+import express from "express";
 import dotenv from "dotenv";
-import serverless from "serverless-http";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const app = express();
 
-// detect environment
-const isVercel = !!process.env.VERCEL;
+app.use(express.json());
 
-// 🟢 For Vercel (Serverless)
-let handler;
-
-if (isVercel) {
-  console.log("⚙️ Running in Vercel serverless mode");
-  handler = serverless(app);
-} else {
-  // 🟢 For local dev or other Node hosts
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running locally on port ${PORT}`);
+// Simple health check without database
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ 
+    message: "Server is running without DB!",
+    timestamp: new Date().toISOString()
   });
-}
+});
 
-// ✅ Always export something for Vercel to use
-export default handler;
+app.get("/", (req, res) => {
+  res.status(200).json({ 
+    message: "Coffee Shop POS API - Basic Version",
+    status: "OK"
+  });
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+export default app;
